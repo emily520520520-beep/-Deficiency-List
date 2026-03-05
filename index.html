@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>消防缺失統計系統 (iOS 穩定版)</title>
+    <title>消防缺失統計系統 (場所名稱修正版)</title>
     
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
@@ -11,9 +11,8 @@
     
     <style>
         :root { --main-blue: #2980b9; --pdf-blue: #D9EAF7; --border: #A5C2E3; }
-        body { font-family: -apple-system, "Microsoft JhengHei", sans-serif; background: #f0f2f5; margin: 0; padding: 10px; -webkit-font-smoothing: antialiased; }
+        body { font-family: -apple-system, "Microsoft JhengHei", sans-serif; background: #f0f2f5; margin: 0; padding: 10px; }
         
-        /* 讓輸入卡片在 iPhone 上更明顯 */
         .input-card { 
             background: white; padding: 15px; border-radius: 12px; 
             box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 15px;
@@ -26,48 +25,57 @@
         
         label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px; color: #555; }
         
-        /* 防止 iPhone 自動放大，字體統一 16px */
         input, select, textarea { 
             width: 100%; padding: 12px 8px; border: 1px solid #ccc; 
             border-radius: 8px; font-size: 16px; background: #fff; 
-            -webkit-appearance: none; /* 去除 iOS 預設內陰影 */
+            -webkit-appearance: none;
         }
 
         .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
         button { 
             padding: 15px; border: none; border-radius: 8px; color: white; 
-            font-weight: bold; font-size: 16px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+            font-weight: bold; font-size: 16px; cursor: pointer;
         }
         .btn-save { background: #27ae60; grid-column: span 2; }
         .btn-export { background: #2980b9; }
         .btn-pdf { background: #8e44ad; }
 
+        /* --- 報表標題區樣式 --- */
+        .report-header { 
+            background: white; padding: 15px; border: 1px solid var(--border); 
+            border-radius: 12px 12px 0 0; text-align: center;
+        }
+        .report-title { font-size: 20px; font-weight: bold; margin-bottom: 15px; }
+        .header-fields { 
+            display: flex; justify-content: space-between; gap: 10px; 
+            font-size: 14px; flex-wrap: wrap;
+        }
+        .header-fields div { flex: 1; min-width: 140px; text-align: left; }
+        .header-fields input { 
+            border: none; border-bottom: 1px solid #333; 
+            border-radius: 0; padding: 4px; font-size: 14px; width: 70%;
+        }
+
         /* 表格區塊 */
-        .table-area { background: white; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
-        .table-title { background: var(--pdf-blue); padding: 10px; text-align: center; font-weight: bold; border-bottom: 1px solid var(--border); }
-        
+        .table-area { background: white; border-radius: 0 0 12px 12px; overflow: hidden; border: 1px solid var(--border); border-top: none; }
         .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
         table { width: 100%; border-collapse: collapse; min-width: 800px; }
-        th { background: #f8f9fa; border: 1px solid var(--border); padding: 10px 5px; font-size: 13px; }
-        td { border: 1px solid var(--border); padding: 8px; text-align: center; font-size: 14px; }
-        
-        .photo-preview { max-width: 100%; border-radius: 8px; margin-top: 10px; display: none; }
+        th { background: var(--pdf-blue); border: 1px solid var(--border); padding: 10px 5px; font-size: 13px; }
+        td { border: 1px solid var(--border); padding: 8px; text-align: center; font-size: 14px; vertical-align: middle; }
         .thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; }
 
-        /* 列印模式修正 */
         @media print {
             .input-card, .btn-group, .btn-action, p { display: none !important; }
             body { background: white; padding: 0; }
-            .table-area { border: none; }
-            .table-responsive { overflow: visible; }
+            .report-header, .table-area { border: none; }
             th:last-child, td:last-child { display: none !important; }
         }
     </style>
 </head>
 <body>
 
-<div class="input-card" id="editor-ui">
-    <h3 id="formTitle">➕ 新增缺失紀錄</h3>
+<div class="input-card">
+    <h3>➕ 新增缺失紀錄</h3>
     <div class="input-group">
         <div class="input-item"><label>設備分類-1</label><select id="cat1"></select></div>
         <div class="input-item"><label>設備分類-2</label><select id="cat2"></select></div>
@@ -79,7 +87,7 @@
         <div class="input-item full-width">
             <label>📷 拍照/上傳照片</label>
             <input type="file" id="photoInput" accept="image/*" onchange="handlePhoto(event)">
-            <img id="previewImg" class="photo-preview">
+            <img id="previewImg" style="max-width: 100%; border-radius: 8px; margin-top: 10px; display: none;">
         </div>
     </div>
     <div class="btn-group">
@@ -89,11 +97,15 @@
     </div>
 </div>
 
-<div class="table-area">
-    <div class="table-title">消防安全設備缺失統計表 [cite: 1]</div>
-    <div style="padding: 10px; font-size: 14px; border-bottom: 1px solid var(--border);">
-        檢測日期：<input type="date" id="testDate" style="width:150px; border:none; border-bottom:1px solid #000; border-radius:0;">
+<div class="report-header">
+    <div class="report-title">消防安全設備缺失統計表</div>
+    <div class="header-fields">
+        <div>檢測日期：<input type="date" id="testDate"></div>
+        <div>場所名稱：<input type="text" id="locationName" placeholder="點擊輸入場所"></div>
     </div>
+</div>
+
+<div class="table-area">
     <div class="table-responsive">
         <table>
             <thead>
@@ -101,8 +113,9 @@
                     <th>編號</th>
                     <th>設備分類-1</th>
                     <th>設備分類-2</th>
-                    <th>數量</th>
-                    <th>單位</th>
+                    <th>數量/單位</th>
+                    <th>棟別樓層</th>
+                    <th>缺失說明</th>
                     <th>位置</th>
                     <th>照片</th>
                     <th class="btn-action">操作</th>
@@ -114,14 +127,13 @@
 </div>
 
 <script>
-    // 補齊 PDF 中的所有下拉選項 
     const menuData = {
         cat1: ["滅火器設備", "「室內消防栓設備", "泡沫滅火設備", "自動灑水設備", "「火警自動警報設備", "「緊急廣播設備", "標示設備", "避難器具", "「緊急照明燈設備", "連結送水管", "「消防專用蓄水池", "排煙設備", "緊急電源插座"],
         cat2: ["消防泵浦", "水帶", "泡沫原液槽", "泡沫泵浦", "自動警報逆止閥", "火警總機", "火警指示燈", "手動報警機", "探測器", "廣播主機", "揚聲器", "緊急電話", "避難方向指示燈", "出口燈", "樓層燈", "避難燈具", "出水口及送水口", "採水口", "自動排煙", "手動排煙", "排煙閘門", "緊急電源燈", "滅火器放置盒"],
         unit: ["具", "台", "組", "只", "金", "支", "式", "個", "扇"]
     };
 
-    const db = new Dexie("FireSafetyiOS");
+    const db = new Dexie("FireSafetyApp");
     db.version(1).stores({ records: '++id, cat1, cat2, qty, unit, floor, pos, issue, photo' });
 
     let currentPhoto = "";
@@ -136,6 +148,14 @@
         fill('cat2', menuData.cat2);
         fill('unit', menuData.unit);
         document.getElementById('testDate').valueAsDate = new Date();
+        
+        // 記憶場所名稱
+        const savedLoc = localStorage.getItem('lastLocation');
+        if(savedLoc) document.getElementById('locationName').value = savedLoc;
+        document.getElementById('locationName').addEventListener('input', (e) => {
+            localStorage.setItem('lastLocation', e.target.value);
+        });
+
         render();
     }
 
@@ -145,8 +165,7 @@
         reader.onload = (event) => {
             currentPhoto = event.target.result;
             const img = document.getElementById('previewImg');
-            img.src = currentPhoto;
-            img.style.display = 'block';
+            img.src = currentPhoto; img.style.display = 'block';
         };
         reader.readAsDataURL(file);
     }
@@ -167,11 +186,11 @@
             await db.records.update(editId, data);
             editId = null;
             document.getElementById('saveBtn').innerText = "💾 儲存紀錄";
+            document.getElementById('saveBtn').style.background = "#27ae60";
         } else {
             await db.records.add(data);
         }
         
-        // 清除輸入
         document.getElementById('issue').value = "";
         document.getElementById('previewImg').style.display = 'none';
         currentPhoto = "";
@@ -185,13 +204,14 @@
                 <td>${i+1}</td>
                 <td>${r.cat1}</td>
                 <td>${r.cat2}</td>
-                <td>${r.qty}</td>
-                <td>${r.unit}</td>
+                <td>${r.qty}${r.unit}</td>
+                <td>${r.floor}</td>
+                <td>${r.issue}</td>
                 <td>${r.pos}</td>
                 <td>${r.photo ? `<img src="${r.photo}" class="thumb">` : '無'}</td>
                 <td class="btn-action">
-                    <button style="background:#f39c12; padding:5px;" onclick="startEdit(${r.id})">改</button>
-                    <button style="background:#e74c3c; padding:5px;" onclick="del(${r.id})">刪</button>
+                    <button style="background:#f39c12; padding:8px; margin-bottom:5px; width:100%;" onclick="startEdit(${r.id})">改</button>
+                    <button style="background:#e74c3c; padding:8px; width:100%;" onclick="del(${r.id})">刪</button>
                 </td>
             </tr>
         `).join('');
@@ -208,7 +228,13 @@
         document.getElementById('floor').value = r.floor;
         document.getElementById('pos').value = r.pos;
         document.getElementById('issue').value = r.issue;
+        if(r.photo) {
+            currentPhoto = r.photo;
+            document.getElementById('previewImg').src = r.photo;
+            document.getElementById('previewImg').style.display = 'block';
+        }
         document.getElementById('saveBtn').innerText = "🔄 更新紀錄";
+        document.getElementById('saveBtn').style.background = "#f39c12";
         window.scrollTo(0,0);
     }
 
@@ -220,10 +246,18 @@
         const items = await db.records.toArray();
         const workbook = new ExcelJS.Workbook();
         const sheet = workbook.addWorksheet('缺失表');
-        sheet.columns = [ {header:'編號', width:5}, {header:'類別1', width:20}, {header:'類別2', width:20}, {header:'數量', width:10}, {header:'缺失說明', width:30} ];
-        items.forEach(r => sheet.addRow([r.id, r.cat1, r.cat2, r.qty + r.unit, r.issue]));
+        sheet.columns = [ 
+            {header:'編號', key:'id', width:5}, 
+            {header:'分類1', key:'c1', width:15}, 
+            {header:'分類2', key:'c2', width:15}, 
+            {header:'數量', key:'q', width:10},
+            {header:'樓層', key:'f', width:10},
+            {header:'位置', key:'p', width:15},
+            {header:'缺失說明', key:'i', width:30}
+        ];
+        items.forEach((r, i) => sheet.addRow([i+1, r.cat1, r.cat2, r.qty+r.unit, r.floor, r.pos, r.issue]));
         const buffer = await workbook.xlsx.writeBuffer();
-        saveAs(new Blob([buffer]), "消防缺失表.xlsx");
+        saveAs(new Blob([buffer]), `消防缺失表_${document.getElementById('locationName').value || '未命名'}.xlsx`);
     }
 
     window.onload = init;
