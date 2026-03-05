@@ -3,41 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>消防缺失統計系統 (iOS 匯出強化版)</title>
+    <title>消防缺失統計系統 (功能全補回版)</title>
     
-    <script src="https://unpkg.com/dexie/dist/dexie.js" onerror="alert('資料庫元件載入失敗，請檢查網路')"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js" onerror="alert('Excel元件載入失敗')"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" onerror="alert('下載元件載入失敗')"></script>
+    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     
     <style>
         :root { --main-blue: #2980b9; --pdf-blue: #D9EAF7; --border: #A5C2E3; }
         body { font-family: -apple-system, system-ui, sans-serif; background: #f0f2f5; margin: 0; padding: 10px; }
-        .input-card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 15px; border-top: 5px solid var(--main-blue); }
+        
+        /* 輸入區卡片 */
+        .input-card { 
+            background: white; padding: 15px; border-radius: 12px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 15px;
+            border-top: 5px solid var(--main-blue);
+        }
+        
         .input-group { display: flex; flex-wrap: wrap; gap: 8px; }
         .input-item { flex: 1; min-width: calc(50% - 10px); }
         .full-width { flex: 100%; }
+        
         label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px; color: #555; }
-        input, select { width: 100%; padding: 12px 8px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+        
+        input, select { 
+            width: 100%; padding: 12px 8px; border: 1px solid #ccc; 
+            border-radius: 8px; font-size: 16px; box-sizing: border-box;
+        }
+
         .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        button { padding: 15px; border: none; border-radius: 8px; color: white; font-weight: bold; font-size: 16px; cursor: pointer; }
+        button { 
+            padding: 15px; border: none; border-radius: 8px; color: white; 
+            font-weight: bold; font-size: 16px; cursor: pointer;
+        }
         .btn-save { background: #27ae60; grid-column: span 2; }
         .btn-export { background: #2980b9; }
         .btn-pdf { background: #8e44ad; }
-        .report-header { background: white; padding: 15px; border: 1px solid var(--border); border-radius: 12px 12px 0 0; text-align: center; }
-        .header-fields { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; flex-wrap: wrap; }
+
+        /* 報表標題與場所資訊 */
+        .report-header { 
+            background: white; padding: 15px; border: 1px solid var(--border); 
+            border-radius: 12px 12px 0 0; text-align: center;
+        }
+        .header-fields { 
+            display: flex; justify-content: space-between; gap: 10px; 
+            font-size: 14px; flex-wrap: wrap; margin-top: 10px;
+        }
+        .header-fields input { 
+            border: none; border-bottom: 1px solid #333; 
+            border-radius: 0; padding: 4px; font-size: 14px; width: 60%;
+        }
+
+        /* 表格區 */
         .table-area { background: white; border-radius: 0 0 12px 12px; overflow: hidden; border: 1px solid var(--border); border-top: none; }
         .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        table { width: 100%; border-collapse: collapse; min-width: 800px; }
-        th { background: var(--pdf-blue); border: 1px solid var(--border); padding: 10px 5px; }
-        td { border: 1px solid var(--border); padding: 8px; text-align: center; vertical-align: middle; }
+        table { width: 100%; border-collapse: collapse; min-width: 850px; }
+        th { background: var(--pdf-blue); border: 1px solid var(--border); padding: 10px 5px; font-size: 13px; }
+        td { border: 1px solid var(--border); padding: 8px; text-align: center; font-size: 14px; vertical-align: middle; }
+        
         .thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; }
-        @media print { .input-card, .btn-group, .btn-action { display: none !important; } }
+        .btn-edit { background: #f39c12; padding: 5px 10px; margin-right: 5px; border-radius: 4px; }
+        .btn-del { background: #e74c3c; padding: 5px 10px; border-radius: 4px; }
+
+        @media print {
+            .input-card, .btn-group, .btn-action { display: none !important; }
+            body { background: white; padding: 0; }
+            .report-header, .table-area { border: none; }
+        }
     </style>
 </head>
 <body>
 
 <div class="input-card">
-    <h3>➕ 新增缺失紀錄</h3>
+    <h3 id="formTitle">➕ 新增缺失紀錄</h3>
     <div class="input-group">
         <div class="input-item"><label>設備分類-1</label><select id="cat1"></select></div>
         <div class="input-item"><label>設備分類-2</label><select id="cat2"></select></div>
@@ -45,11 +83,11 @@
         <div class="input-item"><label>單位</label><select id="unit"></select></div>
         <div class="input-item"><label>棟別樓層</label><input type="text" id="floor" placeholder="例: A棟1F"></div>
         <div class="input-item"><label>位置</label><input type="text" id="pos" placeholder="例: 走廊"></div>
-        <div class="input-item full-width"><label>缺失說明</label><input type="text" id="issue" placeholder="缺失內容"></div>
+        <div class="input-item full-width"><label>缺失說明</label><input type="text" id="issue" placeholder="請輸入缺失內容"></div>
         <div class="input-item full-width">
             <label>📷 照片</label>
             <input type="file" id="photoInput" accept="image/*" onchange="handlePhoto(event)">
-            <img id="previewImg" style="max-width: 100%; display: none; margin-top: 10px;">
+            <img id="previewImg" style="max-width: 100%; display: none; margin-top: 10px; border-radius: 8px;">
         </div>
     </div>
     <div class="btn-group">
@@ -60,10 +98,10 @@
 </div>
 
 <div class="report-header">
-    <div style="font-size:20px; font-weight:bold; margin-bottom:10px;">消防安全設備缺失統計表</div>
+    <div style="font-size:20px; font-weight:bold;">消防安全設備缺失統計表</div>
     <div class="header-fields">
         <div>檢測日期：<input type="date" id="testDate"></div>
-        <div>場所名稱：<input type="text" id="locationName" placeholder="請輸入場所" style="width:120px; border:none; border-bottom:1px solid #000;"></div>
+        <div>場所名稱：<input type="text" id="locationName" placeholder="點擊輸入"></div>
     </div>
 </div>
 
@@ -87,10 +125,11 @@
         unit: ["具", "台", "組", "只", "金", "支", "式", "個", "扇"]
     };
 
-    const db = new Dexie("FireSafetyiOSFix");
+    const db = new Dexie("FireSafetyiOSFinal");
     db.version(1).stores({ records: '++id, cat1, cat2, qty, unit, floor, pos, issue, photo' });
 
     let currentPhoto = "";
+    let editId = null; // 用於追蹤正在編輯的 ID
 
     async function init() {
         const fill = (id, arr) => {
@@ -114,17 +153,29 @@
     }
 
     async function saveData() {
+        const data = {
+            cat1: document.getElementById('cat1').value,
+            cat2: document.getElementById('cat2').value,
+            qty: document.getElementById('qty').value,
+            unit: document.getElementById('unit').value,
+            floor: document.getElementById('floor').value,
+            pos: document.getElementById('pos').value,
+            issue: document.getElementById('issue').value,
+            photo: currentPhoto
+        };
+
         try {
-            await db.records.add({
-                cat1: document.getElementById('cat1').value,
-                cat2: document.getElementById('cat2').value,
-                qty: document.getElementById('qty').value,
-                unit: document.getElementById('unit').value,
-                floor: document.getElementById('floor').value,
-                pos: document.getElementById('pos').value,
-                issue: document.getElementById('issue').value,
-                photo: currentPhoto
-            });
+            if (editId) {
+                await db.records.update(editId, data);
+                editId = null;
+                document.getElementById('saveBtn').innerText = "💾 儲存紀錄";
+                document.getElementById('saveBtn').style.background = "#27ae60";
+                document.getElementById('formTitle').innerText = "➕ 新增缺失紀錄";
+            } else {
+                await db.records.add(data);
+            }
+            
+            // 重置表單
             document.getElementById('issue').value = "";
             document.getElementById('previewImg').style.display = 'none';
             currentPhoto = "";
@@ -139,50 +190,60 @@
                 <td>${i+1}</td><td>${r.cat1}</td><td>${r.cat2}</td><td>${r.qty}${r.unit}</td>
                 <td>${r.floor}</td><td>${r.issue}</td><td>${r.pos}</td>
                 <td>${r.photo ? `<img src="${r.photo}" class="thumb">` : '無'}</td>
-                <td class="btn-action"><button style="background:#e74c3c; padding:5px;" onclick="del(${r.id})">刪</button></td>
+                <td class="btn-action">
+                    <button class="btn-edit" onclick="startEdit(${r.id})">改</button>
+                    <button class="btn-del" onclick="del(${r.id})">刪</button>
+                </td>
             </tr>
         `).join('');
         document.getElementById('dataTable').innerHTML = html;
     }
 
-    async function del(id) { if(confirm('刪除？')) { await db.records.delete(id); render(); } }
-
-    // --- 加強版匯出邏輯 ---
-    async function exportExcel() {
-        try {
-            const items = await db.records.toArray();
-            if (items.length === 0) { alert("目前沒有資料可以匯出喔！"); return; }
-            
-            if (typeof ExcelJS === 'undefined') { alert("Excel 元件尚未載入，請稍等或重新整理"); return; }
-
-            const workbook = new ExcelJS.Workbook();
-            const sheet = workbook.addWorksheet('缺失表');
-            sheet.columns = [ 
-                {header:'編號', key:'id', width:5}, {header:'分類1', key:'c1', width:15}, 
-                {header:'分類2', key:'c2', width:15}, {header:'數量', width:10},
-                {header:'樓層', width:10}, {header:'位置', width:15}, {header:'缺失說明', width:30}
-            ];
-            
-            items.forEach((r, i) => {
-                sheet.addRow([i+1, r.cat1, r.cat2, r.qty+r.unit, r.floor, r.pos, r.issue]);
-            });
-
-            const buffer = await workbook.xlsx.writeBuffer();
-            const locName = document.getElementById('locationName').value || '未命名場所';
-            
-            // 使用 Blob 下載，這是 iOS Safari 最穩定的方式
-            const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-            saveAs(blob, `消防缺失表_${locName}.xlsx`);
-            
-        } catch (e) {
-            alert("匯出 Excel 發生錯誤：" + e.message);
+    async function startEdit(id) {
+        const r = await db.records.get(id);
+        if (!r) return;
+        
+        editId = id;
+        document.getElementById('cat1').value = r.cat1;
+        document.getElementById('cat2').value = r.cat2;
+        document.getElementById('qty').value = r.qty;
+        document.getElementById('unit').value = r.unit;
+        document.getElementById('floor').value = r.floor;
+        document.getElementById('pos').value = r.pos;
+        document.getElementById('issue').value = r.issue;
+        
+        if (r.photo) {
+            currentPhoto = r.photo;
+            document.getElementById('previewImg').src = r.photo;
+            document.getElementById('previewImg').style.display = 'block';
+        } else {
+            document.getElementById('previewImg').style.display = 'none';
         }
+
+        document.getElementById('saveBtn').innerText = "🔄 更新紀錄";
+        document.getElementById('saveBtn').style.background = "#f39c12";
+        document.getElementById('formTitle').innerText = "📝 正在編輯紀錄";
+        window.scrollTo(0, 0); // 跳回頂部方便編輯
+    }
+
+    async function del(id) { if(confirm('確定刪除？')) { await db.records.delete(id); render(); } }
+
+    async function exportExcel() {
+        const items = await db.records.toArray();
+        if (items.length === 0) { alert("目前沒有資料！"); return; }
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet('缺失表');
+        sheet.columns = [ 
+            {header:'編號', width:5}, {header:'分類1', width:15}, {header:'分類2', width:15}, 
+            {header:'數量', width:10}, {header:'樓層', width:10}, {header:'位置', width:15}, {header:'缺失說明', width:30}
+        ];
+        items.forEach((r, i) => sheet.addRow([i+1, r.cat1, r.cat2, r.qty+r.unit, r.floor, r.pos, r.issue]));
+        const buffer = await workbook.xlsx.writeBuffer();
+        saveAs(new Blob([buffer]), `消防缺失表_${document.getElementById('locationName').value || '未命名'}.xlsx`);
     }
 
     function handlePDF() {
-        // iPhone PDF 匯出其實就是「列印」
-        // 在列印預覽介面，用手指「兩指往外張開」縮放預覽圖，就能儲存成 PDF
-        alert("提示：即將開啟列印介面。\n在預覽畫面用兩指『往外撥』放大，即可另存為 PDF。");
+        alert("提示：進入預覽後，對著預覽圖『兩指往外張開』放大，即可另存為 PDF。");
         window.print();
     }
 
