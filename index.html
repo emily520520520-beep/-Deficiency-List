@@ -191,8 +191,8 @@
                 <td>${r.floor}</td><td>${r.issue}</td><td>${r.pos}</td>
                 <td>${r.photo ? `<img src="${r.photo}" class="thumb">` : '無'}</td>
                 <td class="btn-action">
-                    <button class="btn-edit" onclick="startEdit(${r.id})">改</button>
-                    <button class="btn-del" onclick="del(${r.id})">刪</button>
+                    <button class="btn-edit" onclick="startEdit(${r.id})">編輯</button>
+                    <button class="btn-del" onclick="del(${r.id})">刪除</button>
                 </td>
             </tr>
         `).join('');
@@ -251,3 +251,4 @@
 </script>
 </body>
 </html>
+
